@@ -1,0 +1,1 @@
+添加关机时计划任务：curl -k https://ae.helper.com:5499/stop/0

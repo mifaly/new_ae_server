@@ -1,0 +1,49 @@
+{
+    env: "dev", //dev 或 prod, 影响日志输出
+    listen: "127.0.0.1:5499",
+    pems: {
+        cert: "pems/ae.helper.com.pem",
+        key: "pems/ae.helper.com-key.pem"
+    },
+    public_dir: "public", //资源文件夹，网站根目录直出，默认文件index.html
+    log_level: "trace", //日志等级
+    log_dir: "log", //prod 日志目录
+    log_file: "ae.log", //prod 日志文件
+    max_log_files: 7, //prod 最大日志保留数量，将删除旧日志
+    tmp_dir: "new_ae_server",
+    db_url: "sqlite:ae.db",//sqlite 数据库文件
+    settings: {//业务逻辑需要用到的配置
+        //offer 原价系数，入库时将会与此相乘，并且更新offer时不更新原价, 默认1.5
+        OFFER_PRICE_RATE:1.5,
+        // 价格转换比率, 默认3.75
+        USD2CNY:3.75,
+        // 月销量小于此值不建议囤货,默认5
+        NOT_STOCK_UP_IF_SALE30_LESS_THAN:5,
+        // 月销量屯货数量换算比率 sale * rate = stock, 默认0.67
+        SALE2STOCK:0.67,
+        // 产品重量更新周期,按销量算,默认32
+        NEED_UPDATE_WEIGHT:32,
+        // sku临界数量，大于此值为真，小于此值为假, 默认16
+        SKU_BARRIER:16,
+        // 30天内的uv临界值，低于此值建议下架, 默认10
+        UNPUBLISH_BARRIER_UV30:10,
+        // 创建*天后的产品检测是否建议下架, 默认100
+        ANALYSIS_BEFORE:180,
+        // 重量比率, 建议重量=平均重量*1000/WEIGHT_RATIO, 默认935
+        WEIGHT_RATIO:935,
+        //更新product时product_id对应的xlsx列名,可多个，以“|”分隔
+        XLSX_PID_COLUMN_TITLE:"|商品id|",
+        //更新product时uv30对应的xlsx列名
+        XLSX_UV30_COLUMN_TITLE:"|访客数|Visitors|",
+        //更新product时sale30对应的xlsx列名
+        XLSX_SALES30_COLUMN_TITLE:"|支付商品件数|Paid Product Number|",
+        // 订单详情URL模板
+        ORDER_URL_PATTERN:"https://csp.aliexpress.com/apps/order/detail?orderId={ORDER_ID}",
+        // 货源URL模板
+        OFFER_URL_PATTERN:"https://detail.1688.com/offer/{OFFER_ID}.html",
+        // 产品URL模板
+        PRODUCT_URL_PATTERN:"https://csp.aliexpress.com/m_apps/aepop-product-manage/list-manage?product_id={PRODUCT_ID}",
+        // 物流单详情URL模板
+        LG_ORDER_URL_PATTERN:"https://sg-cainiao.aliexpress.com/export/ae/logistics/order/getDetail.htm?lgOrderCode={LG_ORDER_ID}",
+    },
+}
