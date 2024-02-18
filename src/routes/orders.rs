@@ -292,10 +292,11 @@ pub async fn admin_order_show(
         orders_query_builder.push_bind(search.order_id);
     }
     if search.product_id > 0 {
+        let like_str = format!("%{}%", search.product_id);
         total_query_builder.push(" and products like ");
-        total_query_builder.push_bind(search.product_id);
+        total_query_builder.push_bind(like_str.clone());
         orders_query_builder.push(" and products like ");
-        orders_query_builder.push_bind(search.product_id);
+        orders_query_builder.push_bind(like_str.clone());
     }
 
     let total: (i64,) = total_query_builder.build_query_as().fetch_one(&db).await?;
