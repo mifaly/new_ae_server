@@ -25,11 +25,12 @@ pub async fn new(
 
     let offer_price_rate: f64 = settings["OFFER_PRICE_RATE"].as_f64().unwrap_or(1.5);
     //价格按倍率调整
-    no.price = (no.price as f64 * offer_price_rate) as i32;
+    no.price = (no.price as f64 * offer_price_rate) as i64;
     let offer = Offer::new(&no);
 
-    let id = query("INSERT INTO offers (product_id, discount, sku_info_use, detail_url_use, pending, tips, created_at, updated_at, deleted_at, offer_id, title, cover, wireless_video_id, detail_video_id, model_id, sale30, sale_info, price, better_price, sku_info, detail_url, supplier, store_url, promotion_end) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)")
+    let id = query("INSERT INTO offers (product_id, sale_record, discount, sku_info_use, detail_url_use, pending, tips, created_at, updated_at, deleted_at, offer_id, title, cover, wireless_video_id, detail_video_id, model_id, sale30, sale_info, price, better_price, sku_info, detail_url, supplier, store_url, promotion_end) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25)")
     .bind(offer.product_id)
+    .bind(offer.sale_record)
     .bind(offer.discount)
     .bind(offer.sku_info_use)
     .bind(offer.detail_url_use)
@@ -115,7 +116,8 @@ pub async fn update(
         .await?;
     if let Some(old_offer) = offer_ {
         let updated_offer = old_offer.update(&no);
-        let affacted_rows = query("UPDATE offers SET title = ?, cover = ?, wireless_video_id = ?, detail_video_id = ?, sale30 = ?, sale_info = ?, detail_url = ?, better_price = ?, discount = ?, pending = ?, tips = ?, sku_info = ?, supplier = ?, store_url = ?, promotion_end = ?, updated_at = ? WHERE offer_id = ?")
+        let affacted_rows = query("UPDATE offers SET sale_record = ?,title = ?, cover = ?, wireless_video_id = ?, detail_video_id = ?, sale30 = ?, sale_info = ?, detail_url = ?, better_price = ?, discount = ?, pending = ?, tips = ?, sku_info = ?, supplier = ?, store_url = ?, promotion_end = ?, updated_at = ? WHERE offer_id = ?")
+        .bind(&updated_offer.sale_record)
         .bind(&updated_offer.title)
         .bind(&updated_offer.cover)
         .bind(updated_offer.wireless_video_id)

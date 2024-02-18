@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_imports, unused)]
 
 use serde::{Deserialize, Serialize};
+use serde_json::{from_str, json, Value};
 use sqlx::FromRow;
 use time::{
     serde::rfc3339::{self as show_time, option as show_option_time},
@@ -18,10 +19,10 @@ pub struct NewOffer {
     pub wireless_video_id: i64,
     pub detail_video_id: i64,
     pub model_id: String,
-    pub sale30: i32,
+    pub sale30: i64,
     pub sale_info: String,
-    pub price: i32,
-    pub better_price: i32,
+    pub price: i64,
+    pub better_price: i64,
     pub sku_info: String,
     pub detail_url: String,
     pub supplier: String,
@@ -32,12 +33,13 @@ pub struct NewOffer {
 
 #[derive(Serialize, Deserialize, Debug, Clone, FromRow)]
 pub struct Offer {
-    pub id: Option<i32>,
+    pub id: Option<i64>,
     pub product_id: i64,
-    pub discount: i32,
+    pub sale_record: String,
+    pub discount: i64,
     pub sku_info_use: String,
     pub detail_url_use: String,
-    pub pending: i32,
+    pub pending: i64,
     pub tips: String,
     #[serde(with = "show_time")]
     pub created_at: OffsetDateTime,
@@ -53,10 +55,10 @@ pub struct Offer {
     pub wireless_video_id: i64,
     pub detail_video_id: i64,
     pub model_id: String,
-    pub sale30: i32,
+    pub sale30: i64,
     pub sale_info: String,
-    pub price: i32,
-    pub better_price: i32,
+    pub price: i64,
+    pub better_price: i64,
     pub sku_info: String,
     pub detail_url: String,
     pub supplier: String,
@@ -69,6 +71,12 @@ impl Offer {
         Self {
             id: None,
             product_id: 0,
+            sale_record: json!([
+                {
+                    "date": OffsetDateTime::now_local().unwrap().date().to_string(),
+                    "count": no.sale30
+                }
+            ]).to_string(),
             discount: (no.price - no.better_price) * 100 / no.price,
             sku_info_use: no.sku_info.clone(),
             detail_url_use: no.detail_url.clone(),
@@ -85,7 +93,7 @@ impl Offer {
             wireless_video_id: no.wireless_video_id,
             detail_video_id: no.detail_video_id,
             model_id: no.model_id.clone(),
-            sale30: no.sale30,
+            sale30: 0, //新增的offer销量刚开始统计为0
             sale_info: no.sale_info.clone(),
             price: no.price,
             better_price: no.better_price,
@@ -99,6 +107,7 @@ impl Offer {
 
     pub fn update(mut self, no: &NewOffer) -> Self {
         self.updated_at = OffsetDateTime::now_local().unwrap();
+        let today = self.updated_at.date().to_string();
 
         self.title = no.title.clone();
         self.cover = no.cover.clone();
@@ -119,7 +128,32 @@ impl Offer {
             }
         }
         //self.model_id = no.model_id.clone();
-        self.sale30 = no.sale30;
+        let sale_record_today = json!({
+            "date": &today,
+            "count": no.sale30
+        });
+        let mut records = from_str::<Value>(&self.sale_record)
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .to_owned();
+        if records.len() == 0 || records[records.len() - 1]["date"].as_str().unwrap() != &today {
+            records.push(sale_record_today);
+
+            while records.len() > 400 {
+                records.remove(0);
+            }
+        }
+        self.sale_record = json!(records).to_string();
+        self.sale30 = if records.len() < 2 {
+            0
+        } else if records.len() < 31 {
+            records[records.len() - 1]["count"].as_i64().unwrap()
+                - records[0]["count"].as_i64().unwrap()
+        } else {
+            records[records.len() - 1]["count"].as_i64().unwrap()
+                - records[records.len() - 31]["count"].as_i64().unwrap()
+        };
         self.sale_info = no.sale_info.clone();
         self.detail_url = no.detail_url.clone();
         //price不更新
@@ -168,26 +202,26 @@ pub struct NewProduct {
     pub product_id: i64,
     pub title: String,
     pub cover: String,
-    pub price: i32,
+    pub price: i64,
     pub stock_info: String,
     pub model_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, FromRow)]
 pub struct Product {
-    pub id: Option<i32>,
-    pub uv30: i32,
-    pub sales30: i32,
+    pub id: Option<i64>,
+    pub uv30: i64,
+    pub sales30: i64,
     pub offer_id: i64,
-    pub discount: i32,
-    pub stock_count: i32,
-    pub sale_count: i32,
+    pub discount: i64,
+    pub stock_count: i64,
+    pub sale_count: i64,
     pub sale_info: String,
     pub sale_weight: i64,
-    pub weight_cal_count: i32,
-    pub weight: i32,
-    pub inited_weight: i32,
-    pub pending: i32,
+    pub weight_cal_count: i64,
+    pub weight: i64,
+    pub inited_weight: i64,
+    pub pending: i64,
     pub tips: String,
     #[serde(with = "show_time")]
     pub created_at: OffsetDateTime,
@@ -200,7 +234,7 @@ pub struct Product {
     pub product_id: i64,
     pub title: String,
     pub cover: String,
-    pub price: i32,
+    pub price: i64,
     pub stock_info: String,
     pub model_id: String,
 }
@@ -255,16 +289,16 @@ impl Product {
 pub struct NewOrder {
     pub order_id: i64,
     pub remark: String,
-    pub product_num: i32,
-    pub item_num: i32,
+    pub product_num: i64,
+    pub item_num: i64,
     pub products: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, FromRow)]
 pub struct Order {
-    pub id: Option<i32>,
+    pub id: Option<i64>,
     pub lg_order_id: Option<String>,
-    pub weight: i32,
+    pub weight: i64,
     pub used_stock: String,
     #[serde(with = "show_time")]
     pub created_at: OffsetDateTime,
@@ -274,8 +308,8 @@ pub struct Order {
     //NewOrder
     pub order_id: i64,
     pub remark: String,
-    pub product_num: i32,
-    pub item_num: i32,
+    pub product_num: i64,
+    pub item_num: i64,
     pub products: String,
 }
 

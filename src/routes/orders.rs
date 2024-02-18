@@ -176,7 +176,7 @@ pub async fn update_weight(
         db_pool: db,
         settings,
     }): State<AEState>,
-    Path((oid, weight, item_num)): Path<(i64, i32, i32)>,
+    Path((oid, weight, item_num)): Path<(i64, i64, i64)>,
 ) -> Result<Res, AeError> {
     let order_: Option<Order> = query_as("SELECT * FROM orders WHERE order_id = ?1")
         .bind(oid)
@@ -205,7 +205,7 @@ pub async fn update_weight(
     }
 
     let one_product_id = if let Some(pid) =
-        serde_json::from_str::<HashMap<i64, Vec<(String, i32)>>>(&order.products)?
+        serde_json::from_str::<HashMap<i64, Vec<(String, i64)>>>(&order.products)?
             .keys()
             .next()
     {
@@ -226,25 +226,25 @@ pub async fn update_weight(
     let orig_weight_cal_count = pd.weight_cal_count;
 
     pd.weight_cal_count += order.item_num;
-    pd.sale_weight += weight as i64;
+    pd.sale_weight += weight;
 
     let weight_ratio = if let Some(wr) = settings["WEIGHT_RATIO"].as_i64() {
         wr
     } else {
         return Err(anyhow!("no weight_ratio").into());
     };
-    pd.weight = ((pd.sale_weight / (pd.weight_cal_count as i64)) * 1000 / weight_ratio) as i32;
+    pd.weight = (pd.sale_weight / (pd.weight_cal_count)) * 1000 / weight_ratio;
 
     let need_update_weight = if let Some(nuw) = settings["NEED_UPDATE_WEIGHT"].as_i64() {
-        nuw as i32
+        nuw
     } else {
         return Err(anyhow!("no need_update_weight").into());
     };
 
     if pd.weight_cal_count == 1
         || pd.weight_cal_count < 33
-            && (pd.weight_cal_count as f64).log2() as i32
-                - (orig_weight_cal_count as f64).log2() as i32
+            && (pd.weight_cal_count as f64).log2() as i64
+                - (orig_weight_cal_count as f64).log2() as i64
                 > 0
         || pd.weight_cal_count / need_update_weight - orig_weight_cal_count / need_update_weight > 0
     {

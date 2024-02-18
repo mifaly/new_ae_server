@@ -9,6 +9,7 @@ CREATE TABLE offers(
     detail_video_id UNSIGNED BIG INT NOT NULL DEFAULT 0, -- 详情视频ID
     model_id CHARACTER(16) NOT NULL DEFAULT '', -- 商家型号
     sale30 INTEGER NOT NULL DEFAULT 0, -- 商家月?销量
+    sale_record TEXT NOT NULL DEFAULT '[]', -- 商家400天销量记录,json格式,[{"date":"2020-01-01","count":100},{"date":"2020-01-02","count":200}]
     sale_info TEXT NOT NULL DEFAULT '', -- 商家销量统计
     price INTEGER NOT NULL DEFAULT 0, -- 原价，人民币
     better_price INTEGER NOT NULL DEFAULT 0, -- 现价，人民币

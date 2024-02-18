@@ -131,7 +131,7 @@ pub async fn products_from_ids(
     #[derive(Serialize)]
     struct Of {
         offer_id: i64,
-        better_price: i32,
+        better_price: i64,
         model_id: String,
         supplier: String,
         del: &'static str,
@@ -235,7 +235,7 @@ pub async fn ship_use_stock(
         if let Some(quantity_in_stock) = stock_info[&want.sku[0]][&want.sku[1]].as_i64() {
             if quantity_in_stock >= want.quantity {
                 stock_info[&want.sku[0]][&want.sku[1]] = json!(quantity_in_stock - want.quantity);
-                let stock_count = product.stock_count - want.quantity as i32;
+                let stock_count = product.stock_count - want.quantity;
                 let stock_info = serde_json::to_string_pretty(&stock_info)?;
 
                 // 开始事务
