@@ -581,8 +581,12 @@ pub async fn admin_product_dl_discount_xslx(
     //设置头
     worksheet.set_column_width(0, 20)?;
     worksheet.write(0, 0, "Product ID")?;
-    worksheet.write(0, 1, "Discount")?;
-    worksheet.write(0, 2, "p_id")?;
+    worksheet.write(0, 1, "Product Title")?;
+    worksheet.write(0, 2, "Discount")?;
+    worksheet.write(0, 3, "Target People")?;
+    worksheet.write(0, 4, "Extra Discount")?;
+    worksheet.write(0, 5, "Limit Buy Per Customer")?;
+    worksheet.write(0, 6, "p_id")?;
 
     //数字格式
     let decimal_format = Format::new().set_num_format("###0");
@@ -598,8 +602,12 @@ pub async fn admin_product_dl_discount_xslx(
         let id:i64 = row.get("id");
         //row
         worksheet.write(i as u32 + 1, 0, product_id.to_string()).unwrap();
-        worksheet.write_with_format(i as u32 + 1, 1, discount, &decimal_format).unwrap();
-        worksheet.write_with_format(i as u32 + 1, 2, id, &decimal_format).unwrap();
+        worksheet.write(i as u32 + 1, 1, "").unwrap();
+        worksheet.write_with_format(i as u32 + 1, 2, discount, &decimal_format).unwrap();
+        worksheet.write(i as u32 + 1, 3, "").unwrap();
+        worksheet.write(i as u32 + 1, 4, "").unwrap();
+        worksheet.write(i as u32 + 1, 5, "").unwrap();
+        worksheet.write_with_format(i as u32 + 1, 6, id, &decimal_format).unwrap();
     });
 
     let xlsx_name = &format!("product_discount-{}.xlsx", default_discount);
