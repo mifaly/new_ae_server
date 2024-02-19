@@ -205,7 +205,7 @@ pub async fn update_weight(
     }
 
     let one_product_id = if let Some(pid) =
-        serde_json::from_str::<HashMap<i64, Vec<(String, i64)>>>(&order.products)?
+        serde_json::from_str::<HashMap<i64, Vec<(String, i64, i64)>>>(&order.products)?
             .keys()
             .next()
     {
