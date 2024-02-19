@@ -3,7 +3,7 @@ use crate::types::{err, ok, AEState, AeError, Res};
 use anyhow::anyhow;
 use axum::extract::{Json, Path, State};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{from_str, json, Value};
 use sqlx::{query, query_as, QueryBuilder};
 use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
@@ -159,16 +159,47 @@ pub async fn set_lg_id(
     }
 
     let query_str = format!(
-        "select * from orders where order_id in ({})",
+        "select order_id, products from orders where order_id in ({})",
         vec!["?"; sets.len()].join(",")
     );
     let mut query_ = query_as(&query_str);
     for o in sets.iter() {
         query_ = query_.bind(o.order_id);
     }
-    let orders: Vec<Order> = query_.fetch_all(&db).await?;
+    let orders: Vec<(i64, String)> = query_.fetch_all(&db).await?;
 
-    return ok(json!(orders));
+    let mut pids: HashSet<i64> = HashSet::new();
+    let mut line_pds: HashMap<i64, String> = HashMap::new();
+    for o in orders.iter() {
+        let pds: HashMap<i64, Vec<(String, i64, i64)>> = from_str(&o.1)?;
+        pids.extend(pds.keys());
+        for (pid, pd) in pds {
+            for p in pd {
+                line_pds.insert(p.2, pid.to_string());
+            }
+        }
+    }
+
+    let query_str = format!(
+        "select p.product_id, o.model_id, o.sku_info_use from products p left join offers o on p.offer_id = o.offer_id where p.product_id in ({})",
+        vec!["?"; pids.len()].join(",")
+    );
+    let mut query_ = query_as(&query_str);
+    for pid in pids {
+        query_ = query_.bind(pid);
+    }
+    let pds: Vec<(i64, String, String)> = query_.fetch_all(&db).await?;
+
+    let mut pd_ofs: HashMap<i64, (String, Value)> = HashMap::new();
+    for pd in pds {
+        let colors: Value = from_str(&pd.2)?;
+        pd_ofs.insert(pd.0, (pd.1, colors["skuProps"][0]["value"].to_owned()));
+    }
+
+    return ok(json!({
+        "line_pds": line_pds,
+        "pd_ofs": pd_ofs
+    }));
 }
 
 pub async fn update_weight(
@@ -205,7 +236,7 @@ pub async fn update_weight(
     }
 
     let one_product_id = if let Some(pid) =
-        serde_json::from_str::<HashMap<i64, Vec<(String, i64, i64)>>>(&order.products)?
+        from_str::<HashMap<i64, Vec<(String, i64, i64)>>>(&order.products)?
             .keys()
             .next()
     {
