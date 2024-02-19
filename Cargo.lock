@@ -964,7 +964,6 @@ dependencies = [
  "axum-server",
  "calamine",
  "json5",
- "regex",
  "rust_xlsxwriter",
  "serde",
  "serde_json",

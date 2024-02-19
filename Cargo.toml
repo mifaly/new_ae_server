@@ -32,5 +32,3 @@ tower-http = { version = "0.5", features = ["trace", "cors", "timeout", "fs"] }
 
 calamine = "0.24"
 rust_xlsxwriter = "0.62"
-
-regex = "1.0"
