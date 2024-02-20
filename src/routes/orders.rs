@@ -2,6 +2,7 @@ use crate::models::{NewOrder, Order, Product};
 use crate::types::{err, ok, AEState, AeError, Res};
 use anyhow::anyhow;
 use axum::extract::{Json, Path, State};
+use regex::Regex;
 use serde::Deserialize;
 use serde_json::{from_str, json, Value};
 use sqlx::{query, query_as, QueryBuilder};
@@ -9,7 +10,6 @@ use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
 use time::{Duration, OffsetDateTime};
 use tracing::error;
-use regex::Regex;
 
 pub async fn get_from_order_id(
     State(AEState {
@@ -200,7 +200,10 @@ pub async fn set_lg_id(
     let reg = Regex::new(r"[^\d]")?;
     for line in line_pds.values_mut() {
         if let Some(pd) = pd_ofs.get(&line.0) {
-            let color_idx:usize = reg.replace_all(line.2.split(" + ").next().unwrap(), "").parse()?;
+            let color_idx: usize = reg
+                .replace_all(line.2.split(" + ").next().unwrap(), "")
+                .parse::<usize>()?
+                - 1;
             line.1 = pd.0.clone();
             line.2 = pd.1[color_idx]["name"].as_str().unwrap_or("").to_string();
         }
