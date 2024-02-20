@@ -222,7 +222,7 @@ pub async fn ship_use_stock(
     }): State<AEState>,
     Json(mut want): Json<UseStock>,
 ) -> Result<Res, AeError> {
-    let product_: Option<Product> = query_as("SELECT * FROM products WHERE product_id = ?1")
+    let product_: Option<Product> = query_as("SELECT * FROM products WHERE id = ?1")
         .bind(want.id)
         .fetch_optional(&db)
         .await?;
@@ -253,7 +253,7 @@ pub async fn ship_use_stock(
                     return err("orders未更新, 请手动检查".to_string());
                 }
 
-                let affacted_rows = query("update products set stock_count=?,stock_info=?,updated_at=? where product_id=?")
+                let affacted_rows = query("update products set stock_count=?,stock_info=?,updated_at=? where id=?")
                     .bind(stock_count)
                     .bind(stock_info)
                     .bind(OffsetDateTime::now_local()?)
@@ -269,7 +269,7 @@ pub async fn ship_use_stock(
                 // 提交事务
                 db_trans.commit().await?;
 
-                return ok(json!({}));
+                return ok(json!(()));
             } else {
                 return err("库存不足".to_string());
             }

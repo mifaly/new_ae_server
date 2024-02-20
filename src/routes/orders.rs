@@ -9,6 +9,7 @@ use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
 use time::{Duration, OffsetDateTime};
 use tracing::error;
+use regex::Regex;
 
 pub async fn get_from_order_id(
     State(AEState {
@@ -169,13 +170,13 @@ pub async fn set_lg_id(
     let orders: Vec<(i64, String)> = query_.fetch_all(&db).await?;
 
     let mut pids: HashSet<i64> = HashSet::new();
-    let mut line_pds: HashMap<i64, String> = HashMap::new();
+    let mut line_pds: HashMap<i64, (i64, String, String)> = HashMap::new();
     for o in orders.iter() {
         let pds: HashMap<i64, Vec<(String, i64, i64)>> = from_str(&o.1)?;
         pids.extend(pds.keys());
         for (pid, pd) in pds {
             for p in pd {
-                line_pds.insert(p.2, pid.to_string());
+                line_pds.insert(p.2, (pid, "".to_string(), p.0));
             }
         }
     }
@@ -196,10 +197,16 @@ pub async fn set_lg_id(
         pd_ofs.insert(pd.0, (pd.1, colors["skuProps"][0]["value"].to_owned()));
     }
 
-    return ok(json!({
-        "line_pds": line_pds,
-        "pd_ofs": pd_ofs
-    }));
+    let reg = Regex::new(r"[^\d]")?;
+    for line in line_pds.values_mut() {
+        if let Some(pd) = pd_ofs.get(&line.0) {
+            let color_idx:usize = reg.replace_all(line.2.split(" + ").next().unwrap(), "").parse()?;
+            line.1 = pd.0.clone();
+            line.2 = pd.1[color_idx]["name"].as_str().unwrap_or("").to_string();
+        }
+    }
+
+    return ok(json!(line_pds));
 }
 
 pub async fn update_weight(
