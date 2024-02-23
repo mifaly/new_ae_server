@@ -231,7 +231,7 @@ pub async fn ship_use_stock(
         want.sku[0] = want.sku[0].to_uppercase();
         want.sku[1] = want.sku[1].to_uppercase();
 
-        let mut stock_info: Value = serde_json::from_str(&product.stock_info)?;
+        let mut stock_info: Value = serde_json::from_str(&product.stock_info.to_uppercase())?;
         if let Some(quantity_in_stock) = stock_info[&want.sku[0]][&want.sku[1]].as_i64() {
             if quantity_in_stock >= want.quantity {
                 stock_info[&want.sku[0]][&want.sku[1]] = json!(quantity_in_stock - want.quantity);
