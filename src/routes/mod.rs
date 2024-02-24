@@ -18,7 +18,7 @@ pub fn router<S>(state: AEState) -> Router<S> {
         .nest(
             "/offers",
             Router::new()
-                .route("/new", get(offers::new))
+                .route("/new", post(offers::new))
                 .route("/get/:offer_id", get(offers::get))
                 .route("/next", get(offers::next))
                 .route("/update", post(offers::update)),

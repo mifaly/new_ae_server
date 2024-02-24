@@ -1,6 +1,6 @@
 {
     env: "dev", //dev 或 prod, 影响日志输出
-    listen: "127.0.0.1:5499",
+    listen: "127.0.0.1:443",
     pems: {
         cert: "pems/ae.helper.com.pem",
         key: "pems/ae.helper.com-key.pem"
