@@ -84,7 +84,7 @@ pub async fn get(
             let mut advise_stock = json!({});
             for (color, sizes) in sale_info.as_object().unwrap() {
                 for (size, sold) in sizes.as_object().unwrap() {
-                    advise_stock[color][size] = json!(if pd.sale_count > 0 {
+                    advise_stock[color][size.to_uppercase()] = json!(if pd.sale_count > 0 {
                         let advise = (sold.as_f64().unwrap() * advise_stock_num) / (pd.sale_count as f64);
                         let stock = stock_info[color][size].as_f64().unwrap();
                         (advise, stock, advise - stock)
