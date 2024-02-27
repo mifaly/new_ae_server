@@ -1,9 +1,9 @@
-use crate::models::{NewOffer, Offer};
+use crate::models::{NewOffer, Offer, Product};
 use crate::types::{err, ok, AEState, AeError, Res};
 use anyhow::anyhow;
 use axum::extract::{Json, Path, State};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{from_str, json, Value};
 use sqlx::{query, query_as, QueryBuilder};
 use std::cmp::{max, min};
 use time::{Duration, OffsetDateTime};
@@ -62,7 +62,7 @@ pub async fn new(
 pub async fn get(
     State(AEState {
         db_pool: db,
-        settings: _,
+        settings,
     }): State<AEState>,
     Path(oid): Path<i64>,
 ) -> Result<Res, AeError> {
@@ -71,7 +71,33 @@ pub async fn get(
         .fetch_optional(&db)
         .await?;
     if let Some(offer) = offer_ {
-        return ok(json!(offer));
+        let mut res = json!(offer);
+        let pd_: Option<Product> = query_as("select * from products where product_id = ?1")
+            .bind(offer.product_id)
+            .fetch_optional(&db)
+            .await?;
+        if let Some(pd) = pd_ {
+            let advise_stock_num =
+                (pd.sales30 as f64) * settings["SALE2STOCK"].as_f64().unwrap_or(0.67);
+            let sale_info: Value = from_str(&pd.sale_info)?; //已卖出数据为基准
+            let stock_info: Value = from_str(&pd.stock_info)?;
+            let mut advise_stock = json!({});
+            for (color, sizes) in sale_info.as_object().unwrap() {
+                for (size, sold) in sizes.as_object().unwrap() {
+                    advise_stock[color][size] = json!(if pd.sale_count > 0 {
+                        let advise = (sold.as_f64().unwrap() * advise_stock_num) / (pd.sale_count as f64);
+                        let stock = stock_info[color][size].as_f64().unwrap();
+                        (advise, stock, advise - stock)
+                    } else {
+                        (0.0, 0.0, 0.0)
+                    });
+                }
+            }
+            res["advise_stock"] = advise_stock;
+        } else {
+            res["advise_stock"] = json!(());
+        }
+        return ok(res);
     } else {
         return err("not found".to_string());
     }
@@ -98,7 +124,7 @@ pub async fn next(
             .bind(OffsetDateTime::now_local()?.date() - Duration::days(180))
             .execute(&db)
             .await?;
-        
+
         return err("all done".to_string());
     }
 }
