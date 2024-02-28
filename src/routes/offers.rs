@@ -88,7 +88,12 @@ pub async fn get(
                 let color_idx = reg.replace_all(color, "").to_string();
                 advise_stock[&color_idx]["color_name"] = json!(color);
                 for (size, sold) in sizes.as_object().unwrap() {
-                    advise_stock[&color_idx][size] = json!(if pd.sale_count > 0 {
+                    let short_size = size
+                        .replace("XXXXXL", "5XL")
+                        .replace("XXXXL", "4XL")
+                        .replace("XXXL", "3XL")
+                        .replace("XXL", "2XL");
+                    advise_stock[&color_idx][short_size] = json!(if pd.sale_count > 0 {
                         let advise =
                             (sold.as_f64().unwrap() * advise_stock_num) / (pd.sale_count as f64);
                         let stock = stock_info[color][size].as_f64().unwrap();
