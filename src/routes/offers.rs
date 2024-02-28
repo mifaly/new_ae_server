@@ -2,6 +2,7 @@ use crate::models::{NewOffer, Offer, Product};
 use crate::types::{err, ok, AEState, AeError, Res};
 use anyhow::anyhow;
 use axum::extract::{Json, Path, State};
+use regex::Regex;
 use serde::Deserialize;
 use serde_json::{from_str, json, Value};
 use sqlx::{query, query_as, QueryBuilder};
@@ -79,13 +80,17 @@ pub async fn get(
         if let Some(pd) = pd_ {
             let advise_stock_num =
                 (pd.sales30 as f64) * settings["SALE2STOCK"].as_f64().unwrap_or(0.67);
-            let sale_info: Value = from_str(&pd.sale_info)?; //已卖出数据为基准
-            let stock_info: Value = from_str(&pd.stock_info)?;
+            let sale_info: Value = from_str(&pd.sale_info.to_uppercase())?; //已卖出数据为基准
+            let stock_info: Value = from_str(&pd.stock_info.to_uppercase())?;
             let mut advise_stock = json!({});
+            let reg = Regex::new(r"[^\d]")?;
             for (color, sizes) in sale_info.as_object().unwrap() {
+                let color_idx = reg.replace_all(color, "").to_string();
+                advise_stock[&color_idx]["color_name"] = json!(color);
                 for (size, sold) in sizes.as_object().unwrap() {
-                    advise_stock[color][size.to_uppercase()] = json!(if pd.sale_count > 0 {
-                        let advise = (sold.as_f64().unwrap() * advise_stock_num) / (pd.sale_count as f64);
+                    advise_stock[&color_idx][size] = json!(if pd.sale_count > 0 {
+                        let advise =
+                            (sold.as_f64().unwrap() * advise_stock_num) / (pd.sale_count as f64);
                         let stock = stock_info[color][size].as_f64().unwrap();
                         (advise, stock, advise - stock)
                     } else {
