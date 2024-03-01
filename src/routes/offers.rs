@@ -119,7 +119,7 @@ pub async fn next(
         settings,
     }): State<AEState>,
 ) -> Result<Res, AeError> {
-    let row: Option<(i64,)> = query_as("select offer_id from offers where updated_at<?1 and deleted_at is null and product_id>0 order by id asc limit 1").bind(OffsetDateTime::now_local()?.date()).fetch_optional(&db).await?;
+    let row: Option<(i64,)> = query_as("select offer_id from offers where updated_at<?1 and deleted_at is null order by id asc limit 1").bind(OffsetDateTime::now_local()?.date()).fetch_optional(&db).await?;
     if let Some(r) = row {
         if let Some(offer_url_pattern) = settings["OFFER_URL_PATTERN"].as_str() {
             return ok(json!(

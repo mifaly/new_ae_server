@@ -125,7 +125,8 @@ pub async fn products_from_ids(
     Json(product_ids): Json<Vec<i64>>,
 ) -> Result<Res, AeError> {
     if product_ids.len() <= 0 || product_ids.len() > 100 {
-        return err("product_ids length must between 1 and 100".to_string());
+        return ok(json!(()));
+        //return err("product_ids length must between 1 and 100".to_string());
     }
 
     #[derive(Serialize)]

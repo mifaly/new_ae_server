@@ -61,9 +61,8 @@ pub async fn update_or_add(
 
     for order in exist_orders.iter_mut() {
         order.update(&patch_orders.get(&order.order_id.to_string()).unwrap());
-        let affacted_rows = query("update orders set remark=?,updated_at=? where order_id=?")
+        let affacted_rows = query("update orders set remark=? where order_id=?")
             .bind(&order.remark)
-            .bind(order.updated_at)
             .bind(order.order_id)
             .execute(&mut *db_trans)
             .await?
@@ -156,7 +155,7 @@ pub async fn set_lg_id(
 ) -> Result<Res, AeError> {
     for o in sets.iter() {
         //不用考虑更新失败，因为重入页面不符合“where”更新条件，不会发生更新
-        query("update orders set lg_order_id=?,updated_at=? where order_id=? and (lg_order_id is null or lg_order_id<?)").bind(&o.lg_order_id).bind(OffsetDateTime::now_local()?).bind(o.order_id).bind(&o.lg_order_id).execute(&db).await?;
+        query("update orders set lg_order_id=? where order_id=? and (lg_order_id is null or lg_order_id<?)").bind(&o.lg_order_id).bind(o.order_id).bind(&o.lg_order_id).execute(&db).await?;
     }
 
     let query_str = format!(
@@ -243,6 +242,10 @@ pub async fn update_weight(
 
     if order.product_num != 1 || item_num != order.item_num {
         return ok(json!("多商品或分包订单无法统计重量"));
+    }
+
+    if weight < 10 {
+        return ok(json!("重量过低, 非正常包裹"));
     }
 
     let one_product_id = if let Some(pid) =
