@@ -27,7 +27,7 @@
         SKU_BARRIER:16,
         // 30天内的uv临界值，低于此值建议下架, 默认10
         UNPUBLISH_BARRIER_UV30:10,
-        // 创建*天后的产品检测是否建议下架, 默认100
+        // 创建*天后的产品检测是否建议下架, 默认180
         ANALYSIS_BEFORE:180,
         // 重量比率, 建议重量=平均重量*1000/WEIGHT_RATIO, 默认935
         WEIGHT_RATIO:935,

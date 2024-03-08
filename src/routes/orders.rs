@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use axum::extract::{Json, Path, State};
 use regex::Regex;
 use serde::Deserialize;
-use serde_json::{from_str, json, Value};
+use serde_json::{from_str, json, to_string_pretty, Value};
 use sqlx::{query, query_as, QueryBuilder};
 use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
@@ -102,6 +102,42 @@ pub async fn update_or_add(
             db_trans.rollback().await?;
             error!("orders未添加, 请手动检查！");
             return err("orders未添加, 请手动检查！".to_string());
+        }
+
+        for order in new_orders {
+            let pds: Value = from_str(&order.products)?;
+            for pd in pds.as_object().unwrap().iter() {
+                let pid = pd.0.parse::<i64>()?;
+                let product_: Option<Product> =
+                    query_as("select * from products where product_id = ?")
+                        .bind(pid)
+                        .fetch_optional(&db)
+                        .await?;
+                if product_.is_none() {
+                    continue;
+                }
+                let product = product_.unwrap();
+
+                let mut sale_info: Value = from_str(&product.sale_info.to_uppercase())?;
+                let mut sale_count = product.sale_count;
+                for sku in pd.1.as_array().unwrap() {
+                    let pointer = &format!(
+                        "/{}",
+                        sku[0].as_str().unwrap().replace(" + ", "/").to_uppercase()
+                    );
+                    let num = sku[1].as_i64().unwrap();
+                    sale_info.pointer_mut(pointer).map(|x| {
+                        *x = (x.as_i64().unwrap() + num).into();
+                    });
+                    sale_count += num;
+                }
+                query("update products set sale_count=?,sale_info=? where id=?")
+                    .bind(sale_count)
+                    .bind(to_string_pretty(&sale_info)?)
+                    .bind(product.id)
+                    .execute(&mut *db_trans)
+                    .await?;
+            }
         }
     }
 
