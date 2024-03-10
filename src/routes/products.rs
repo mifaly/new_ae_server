@@ -254,13 +254,15 @@ pub async fn ship_use_stock(
                     return err("orders未更新, 请手动检查".to_string());
                 }
 
-                let affacted_rows = query("update products set stock_count=?,stock_info=?,updated_at=? where id=?")
-                    .bind(stock_count)
-                    .bind(stock_info)
-                    .bind(OffsetDateTime::now_local()?)
-                    .bind(want.id)
-                    .execute(&mut *db_trans)
-                    .await?.rows_affected();
+                let affacted_rows =
+                    query("update products set stock_count=?,stock_info=?,updated_at=? where id=?")
+                        .bind(stock_count)
+                        .bind(stock_info)
+                        .bind(OffsetDateTime::now_local()?)
+                        .bind(want.id)
+                        .execute(&mut *db_trans)
+                        .await?
+                        .rows_affected();
                 if affacted_rows == 0 {
                     db_trans.rollback().await?;
                     error!("products未更新, 请手动检查");
@@ -743,5 +745,17 @@ pub async fn admin_product_upload_xlsx(
         .execute(&db)
         .await?;
 
+    return ok(json!(()));
+}
+
+pub async fn admin_product_available(
+    State(AEState {
+        db_pool: db,
+        settings: _,
+    }): State<AEState>,
+) -> Result<Res, AeError> {
+    query("update products set pending=0 where pending=-2 and deleted_at is null")
+        .execute(&db)
+        .await?;
     return ok(json!(()));
 }
