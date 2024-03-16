@@ -13,6 +13,8 @@
     tmp_dir: "new_ae_server",
     db_url: "sqlite:ae.db",//sqlite 数据库文件
     settings: {//业务逻辑需要用到的配置
+        //offer 加入时间超过此天数后检查销量，并建议下架,目前此配置无效，写死在代码中
+        CHECK_OFFER_SALES_VOLUME: 90,
         //offer 原价系数，入库时将会与此相乘，并且更新offer时不更新原价, 默认1.5
         OFFER_PRICE_RATE:1.5,
         // 价格转换比率, 默认3.75

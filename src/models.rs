@@ -5,7 +5,7 @@ use serde_json::{from_str, json, Value};
 use sqlx::FromRow;
 use time::{
     serde::rfc3339::{self as show_time, option as show_option_time},
-    OffsetDateTime,
+    Duration, OffsetDateTime,
 };
 
 //serde serialize 时间格式
@@ -76,7 +76,8 @@ impl Offer {
                     "date": OffsetDateTime::now_local().unwrap().date().to_string(),
                     "count": no.sale30
                 }
-            ]).to_string(),
+            ])
+            .to_string(),
             discount: (no.price - no.better_price) * 100 / no.price,
             sku_info_use: no.sku_info.clone(),
             detail_url_use: no.detail_url.clone(),
@@ -156,6 +157,20 @@ impl Offer {
         };
         self.sale_info = no.sale_info.clone();
         self.detail_url = no.detail_url.clone();
+
+        //月销量低的下架？
+        if self.created_at - self.updated_at > Duration::days(90) {
+            let sale_info: Value = from_str(&self.sale_info).unwrap();
+            let skus = sale_info["color"].as_array().unwrap().len()
+                * sale_info["size"].as_array().unwrap().len();
+            if self.sale30 < (skus as i64) {//销量小于sku数
+                self.tips += "销量低下架否?;";
+                if self.pending == 0 {
+                    self.pending = -1;
+                }
+            }
+        }
+
         //price不更新
         if self.better_price != no.better_price {
             self.better_price = no.better_price;

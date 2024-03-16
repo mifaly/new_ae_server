@@ -413,3 +413,13 @@ pub async fn all_better_price_chnage_is_ok(
     query("update offers set pending=0,tips=\"\" where pending=-1 and deleted_at is null and tips REGEXP '^\\d{1,2} => \\d{1,2} 折扣价变更;$';").execute(&db).await?;
     return ok(json!(()));
 }
+
+pub async fn all_low_sales_is_ok(
+    State(AEState {
+        db_pool: db,
+        settings: _,
+    }): State<AEState>,
+) -> Result<Res, AeError> {
+    query("update offers set pending=0,tips=\"\" where pending=-1 and deleted_at is null and tips=\"销量低下架否?;\"").execute(&db).await?;
+    return ok(json!(()));
+}
