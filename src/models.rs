@@ -159,7 +159,7 @@ impl Offer {
         self.detail_url = no.detail_url.clone();
 
         //月销量低的下架？
-        if self.created_at - self.updated_at > Duration::days(90) {
+        if  self.updated_at - self.created_at > Duration::days(90) {
             let sale_info: Value = from_str(&self.sale_info).unwrap();
             let skus = sale_info["color"].as_array().unwrap().len()
                 * sale_info["size"].as_array().unwrap().len();
