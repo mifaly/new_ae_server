@@ -60,7 +60,8 @@ pub fn router<S>(state: AEState) -> Router<S> {
                         .route(
                             "/allbetterpricechnageisok",
                             get(offers::all_better_price_chnage_is_ok),
-                        ),
+                        )
+                        .route("/alllowsalesisok", get(offers::all_low_sales_is_ok)),
                 )
                 .nest(
                     "/products",
