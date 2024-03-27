@@ -159,11 +159,21 @@ impl Offer {
         self.detail_url = no.detail_url.clone();
 
         //月销量低的下架？
-        if  self.updated_at - self.created_at > Duration::days(90) {
+        let sale60 = if records.len() < 2 {
+            0
+        } else if records.len() < 61 {
+            records[records.len() - 1]["count"].as_i64().unwrap()
+                - records[0]["count"].as_i64().unwrap()
+        } else {
+            records[records.len() - 1]["count"].as_i64().unwrap()
+                - records[records.len() - 61]["count"].as_i64().unwrap()
+        };
+        if self.updated_at - self.created_at > Duration::days(90) {
             let sale_info: Value = from_str(&self.sale_info).unwrap();
             let skus = sale_info["color"].as_array().unwrap().len()
                 * sale_info["size"].as_array().unwrap().len();
-            if self.sale30 < (skus as i64) {//销量小于sku数
+            if sale60 < (skus as i64) {
+                //销量小于sku数
                 self.tips += "销量低下架否?;";
                 if self.pending == 0 {
                     self.pending = -1;

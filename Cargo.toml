@@ -31,6 +31,6 @@ tower = { version = "0.4", features = ["timeout"] }
 tower-http = { version = "0.5", features = ["trace", "cors", "timeout", "fs"] }
 
 calamine = "0.24"
-rust_xlsxwriter = "0.63"
+rust_xlsxwriter = "0.64"
 
 regex = "1.10"
