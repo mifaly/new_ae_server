@@ -40,8 +40,8 @@ async fn main() -> Result<()> {
             .with_writer(
                 RollingFileAppender::builder()
                     .rotation(Rotation::DAILY)
-                    .max_log_files(config["max_log_files"].as_u64().unwrap_or(7) as usize)
                     .filename_prefix(config["log_file"].as_str().unwrap_or("ae.log"))
+                    .max_log_files(config["max_log_files"].as_u64().unwrap_or(7) as usize)
                     .build(config["log_dir"].as_str().unwrap_or("log"))?,
             )
             .with_ansi(false)

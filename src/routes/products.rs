@@ -643,7 +643,7 @@ pub async fn admin_product_upload_xlsx(
 ) -> Result<Res, AeError> {
     let pid_title = settings["XLSX_PID_COLUMN_TITLE"]
         .as_str()
-        .unwrap_or("|商品id|");
+        .unwrap_or("|商品ID|");
     let uv30_title = settings["XLSX_UV30_COLUMN_TITLE"]
         .as_str()
         .unwrap_or("|访客数|");
@@ -652,6 +652,8 @@ pub async fn admin_product_upload_xlsx(
         .unwrap_or("|支付商品件数|");
     let barrier_uv30 = settings["UNPUBLISH_BARRIER_UV30"].as_i64().unwrap_or(10);
     let now = OffsetDateTime::now_local()?;
+    let today = now.date();
+    let days_before = today - Duration::days(settings["ANALYSIS_BEFORE"].as_i64().unwrap_or(180));
     let sql_str = "update products set uv30=?,sales30=?,updated_at=? where product_id=?";
     let sql_str_2 =
         "update products set uv30=?,sales30=?,updated_at=?,pending=-2 where product_id=?";
@@ -665,8 +667,7 @@ pub async fn admin_product_upload_xlsx(
 
         let mut workbook: Xlsx<_> = open_workbook(&file_path)?;
         let sheets = workbook.sheet_names().to_owned();
-        let days_before = OffsetDateTime::now_local()?.date()
-            - Duration::days(settings["ANALYSIS_BEFORE"].as_i64().unwrap_or(180));
+
         if let Ok(sheet_rows) = workbook.worksheet_range(&sheets[0]) {
             let pids: HashSet<i64> =
                 query("select product_id from products where deleted_at is null and created_at<?")
@@ -737,11 +738,17 @@ pub async fn admin_product_upload_xlsx(
                 }
             }
         }
+
+        query("update products set tips=tips||\"请手动单品分析;\", pending=-2 where updated_at<? and created_at<? and deleted_at is null")
+            .bind(today)
+            .bind(days_before)
+            .execute(&db)
+            .await?;
     }
 
     //删除180天前废弃的products
     query("delete from products where deleted_at is not null and deleted_at < ?")
-        .bind(OffsetDateTime::now_local()?.date() - Duration::days(180))
+        .bind(today - Duration::days(180))
         .execute(&db)
         .await?;
 

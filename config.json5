@@ -34,7 +34,7 @@
         // 重量比率, 建议重量=平均重量*1000/WEIGHT_RATIO, 默认935
         WEIGHT_RATIO:935,
         //更新product时product_id对应的xlsx列名,可多个，以“|”分隔
-        XLSX_PID_COLUMN_TITLE:"|商品id|",
+        XLSX_PID_COLUMN_TITLE:"|商品ID|Profuct ID|",
         //更新product时uv30对应的xlsx列名
         XLSX_UV30_COLUMN_TITLE:"|访客数|Visitors|",
         //更新product时sale30对应的xlsx列名
