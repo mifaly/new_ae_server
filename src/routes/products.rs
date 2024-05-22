@@ -38,7 +38,7 @@ pub async fn new(
 
     let product = Product::new(&np);
 
-    let id = query("INSERT INTO products (uv30,sales30,sale_record,offer_id,discount,stock_count,sale_count,sale_info,sale_weight,weight_cal_count,weight,inited_weight,pending,tips,created_at,updated_at,deleted_at,product_id,title,cover,price,stock_info,model_id) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)")
+    let id = query("INSERT INTO products (uv30,sales30,sale_record,offer_id,discount,stock_count,sale_count,sale_info,sale_weight,weight_cal_count,weight,inited_weight,pending,tips,created_at,updated_at,deleted_at,product_id,title,cover,price,stock_info,model_id) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)")
     .bind(product.uv30)
     .bind(product.sales30)
     .bind(product.sale_record)
