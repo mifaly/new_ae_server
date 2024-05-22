@@ -8,16 +8,17 @@ use axum::{
     response::Response,
 };
 use calamine::{open_workbook, Data, DataType, Reader, Xlsx};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{from_str, json, Value};
 use sqlx::{query, query_as, FromRow, QueryBuilder, Row};
 use std::{
     cmp::{max, min},
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     fs,
     path::PathBuf,
 };
-use time::{Duration, OffsetDateTime};
+use time::{format_description::well_known::Rfc3339, Duration, OffsetDateTime};
 use tracing::{debug, error};
 
 pub async fn new(
@@ -37,9 +38,10 @@ pub async fn new(
 
     let product = Product::new(&np);
 
-    let id = query("INSERT INTO products (uv30,sales30,offer_id,discount,stock_count,sale_count,sale_info,sale_weight,weight_cal_count,weight,inited_weight,pending,tips,created_at,updated_at,deleted_at,product_id,title,cover,price,stock_info,model_id) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)")
+    let id = query("INSERT INTO products (uv30,sales30,sale_record,offer_id,discount,stock_count,sale_count,sale_info,sale_weight,weight_cal_count,weight,inited_weight,pending,tips,created_at,updated_at,deleted_at,product_id,title,cover,price,stock_info,model_id) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)")
     .bind(product.uv30)
     .bind(product.sales30)
+    .bind(product.sale_record)
     .bind(product.offer_id)
     .bind(product.discount)
     .bind(product.stock_count)
@@ -653,34 +655,34 @@ pub async fn admin_product_upload_xlsx(
     let barrier_uv30 = settings["UNPUBLISH_BARRIER_UV30"].as_i64().unwrap_or(10);
     let now = OffsetDateTime::now_local()?;
     let today = now.date();
-    let days_before = today - Duration::days(settings["ANALYSIS_BEFORE"].as_i64().unwrap_or(180));
-    let sql_str = "update products set uv30=?,sales30=?,updated_at=? where product_id=?";
+    let days_before = now - Duration::days(settings["ANALYSIS_BEFORE"].as_i64().unwrap_or(180));
+    let sql_str = "update products set uv30=?,sales30=?,sale_record=?,updated_at=? where id=?";
     let sql_str_2 =
-        "update products set uv30=?,sales30=?,updated_at=?,pending=-2 where product_id=?";
+        "update products set uv30=?,sales30=?,sale_record=?,updated_at=?,pending=-2 where id=?";
+
+    let reg = Regex::new(r"\d{4}-\d{2}-\d{2}").unwrap();
 
     while let Some(field) = multipart.next_field().await? {
         let file_name = field.file_name().unwrap().to_string();
+        let date = match reg.find(&file_name) {
+            Some(m) => m.as_str(),
+            None => {
+                return err("file name not contain date".to_string());
+            }
+        };
         let data = field.bytes().await?;
         let file_path =
-            PathBuf::from(settings["TMP_DIR"].as_str().unwrap_or("tmp")).join(file_name);
+            PathBuf::from(settings["TMP_DIR"].as_str().unwrap_or("tmp")).join(&file_name);
         fs::write(&file_path, data)?;
 
         let mut workbook: Xlsx<_> = open_workbook(&file_path)?;
         let sheets = workbook.sheet_names().to_owned();
 
         if let Ok(sheet_rows) = workbook.worksheet_range(&sheets[0]) {
-            let pids: HashSet<i64> =
-                query("select product_id from products where deleted_at is null and created_at<?")
-                    .bind(days_before)
-                    .fetch_all(&db)
-                    .await?
-                    .iter()
-                    .map(|row| row.get::<i64, _>("product_id"))
-                    .collect();
-
             let mut pid_i = 0; //记录pid所在列
             let mut uv30_i = 0; //记录uv30所在列
             let mut sales30_i = 0; //记录sales30所在列
+            let mut records: HashMap<i64, (String, i64, i64)> = HashMap::new();
 
             for (i, row) in sheet_rows.rows().enumerate() {
                 if i == 0 {
@@ -708,42 +710,92 @@ pub async fn admin_product_upload_xlsx(
                         .unwrap_or("0")
                         .parse::<i64>()
                         .unwrap_or(0);
-                    let uv30 = row[uv30_i]
+                    let uv = row[uv30_i]
                         .get_string()
                         .unwrap_or("0")
                         .parse::<i64>()
                         .unwrap_or(0);
-                    let sales30 = row[sales30_i]
+                    let sale = row[sales30_i]
                         .get_string()
                         .unwrap_or("0")
                         .parse::<i64>()
                         .unwrap_or(0);
-                    if pids.contains(&pid) && uv30 < barrier_uv30 {
+
+                    records.insert(pid, (date.to_string(), uv, sale));
+                }
+            }
+
+            let mut current_id = 0;
+            let max_id: (i64,) = query_as(
+                "select id from products where deleted_at is null order by id desc limit 1",
+            )
+            .fetch_one(&db)
+            .await?;
+            let max_id = max_id.0;
+            while current_id < max_id {
+                let rows = query("select id,product_id,sale_record,created_at from products where id>? and deleted_at is null order by id asc limit 50").bind(current_id).fetch_all(&db).await?;
+                for row in rows {
+                    let id: i64 = row.get("id");
+                    current_id = max(current_id, id);
+                    let product_id: i64 = row.get("product_id");
+                    let mut sale_record_str: String = row.get("sale_record");
+                    let created_at = OffsetDateTime::parse(row.get("created_at"), &Rfc3339)?;
+                    let sale_record_this_day: Value =
+                        if let Some((date, uv, sale)) = records.get(&product_id) {
+                            json!({
+                                "date": date,
+                                "sale": sale,
+                                "uv": uv
+                            })
+                        } else {
+                            json!({
+                                "date": date,
+                                "sale": 0,
+                                "uv": 0
+                            })
+                        };
+                    let mut sale_record = from_str::<Value>(&sale_record_str)
+                        .unwrap()
+                        .as_array()
+                        .unwrap()
+                        .to_owned();
+                    if sale_record.len() == 0
+                        || sale_record[sale_record.len() - 1]["date"].as_str().unwrap() != date
+                    {
+                        sale_record.push(sale_record_this_day);
+                        while sale_record.len() > 400 {
+                            sale_record.remove(0);
+                        }
+                    }
+                    sale_record_str = json!(sale_record).to_string();
+                    let (uv30, sales30) = match sale_record.rchunks(30).next() {
+                        Some(recent30) => {
+                            let mut u = 0;
+                            let mut s = 0;
+                            recent30.iter().for_each(|v| {
+                                u += v["uv"].as_i64().unwrap_or(0);
+                                s += v["sale"].as_i64().unwrap_or(0);
+                            });
+                            (u, s)
+                        }
+                        None => (0, 0),
+                    };
+
+                    if created_at < days_before && uv30 < barrier_uv30 {
                         query(sql_str_2)
-                            .bind(uv30)
-                            .bind(sales30)
-                            .bind(now)
-                            .bind(pid)
-                            .execute(&db)
-                            .await?;
                     } else {
                         query(sql_str)
-                            .bind(uv30)
-                            .bind(sales30)
-                            .bind(now)
-                            .bind(pid)
-                            .execute(&db)
-                            .await?;
                     }
+                    .bind(uv30)
+                    .bind(sales30)
+                    .bind(sale_record_str)
+                    .bind(now)
+                    .bind(id)
+                    .execute(&db)
+                    .await?;
                 }
             }
         }
-
-        query("update products set tips=tips||\"请手动单品分析;\", pending=-2 where updated_at<? and created_at<? and deleted_at is null")
-            .bind(today)
-            .bind(days_before)
-            .execute(&db)
-            .await?;
     }
 
     //删除180天前废弃的products

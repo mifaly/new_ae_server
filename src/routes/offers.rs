@@ -142,7 +142,7 @@ pub async fn next(
 pub async fn update(
     State(AEState {
         db_pool: db,
-        settings: _,
+        settings,
     }): State<AEState>,
     Json(no): Json<NewOffer>,
 ) -> Result<Res, AeError> {
@@ -151,7 +151,7 @@ pub async fn update(
         .fetch_optional(&db)
         .await?;
     if let Some(old_offer) = offer_ {
-        let updated_offer = old_offer.update(&no);
+        let updated_offer = old_offer.update(&no, settings);
         let affacted_rows = query("UPDATE offers SET sale_record = ?,title = ?, cover = ?, wireless_video_id = ?, detail_video_id = ?, sale30 = ?, sale_info = ?, detail_url = ?, better_price = ?, discount = ?, pending = ?, tips = ?, sku_info = ?, supplier = ?, store_url = ?, promotion_end = ?, updated_at = ? WHERE offer_id = ?")
         .bind(&updated_offer.sale_record)
         .bind(&updated_offer.title)

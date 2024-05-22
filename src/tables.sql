@@ -40,6 +40,7 @@ CREATE TABLE products(
     product_id UNSIGNED BIG INT NOT NULL DEFAULT 0, -- 商品ID
     uv30 INTEGER NOT NULL DEFAULT 0, -- 30天浏览人数
     sales30 INTEGER NOT NULL DEFAULT 0, -- 30内销量
+    sale_record TEXT NOT NULL DEFAULT '[]', -- 商家400天销量记录,json格式,[{"date":"2020-01-01","count":100},{"date":"2020-01-02","count":200}]
     offer_id UNSIGNED BIG INT NOT NULL DEFAULT 0, -- 1688 offer id
     title CHARACTER(128) NOT NULL DEFAULT '', -- 标题
     cover TEXT NOT NULL DEFAULT '', -- 主图

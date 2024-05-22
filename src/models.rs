@@ -106,7 +106,7 @@ impl Offer {
         }
     }
 
-    pub fn update(mut self, no: &NewOffer) -> Self {
+    pub fn update(mut self, no: &NewOffer, cfg: Value) -> Self {
         self.updated_at = OffsetDateTime::now_local().unwrap();
         let today = self.updated_at.date().to_string();
 
@@ -168,7 +168,9 @@ impl Offer {
             records[records.len() - 1]["count"].as_i64().unwrap()
                 - records[records.len() - 61]["count"].as_i64().unwrap()
         };
-        if self.updated_at - self.created_at > Duration::days(90) {
+        if self.updated_at - self.created_at
+            > Duration::days(cfg["CHECK_OFFER_SALES_AFTER_DAYS"].as_i64().unwrap_or(90))
+        {
             let sale_info: Value = from_str(&self.sale_info).unwrap();
             let skus = sale_info["color"].as_array().unwrap().len()
                 * sale_info["size"].as_array().unwrap().len();
@@ -237,6 +239,7 @@ pub struct Product {
     pub id: Option<i64>,
     pub uv30: i64,
     pub sales30: i64,
+    pub sale_record: String,
     pub offer_id: i64,
     pub discount: i64,
     pub stock_count: i64,
@@ -270,6 +273,14 @@ impl Product {
             id: None,
             uv30: 0,
             sales30: 0,
+            sale_record: json!([
+                {
+                    "date": OffsetDateTime::now_local().unwrap().date().to_string(),
+                    "sale": 0,
+                    "uv": 0
+                }
+            ])
+            .to_string(),
             offer_id: 0,
             discount: 0,
             stock_count: 0,
