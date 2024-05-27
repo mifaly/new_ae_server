@@ -273,8 +273,7 @@ impl Product {
             id: None,
             uv30: 0,
             sales30: 0,
-            sale_record: json!([])
-            .to_string(),
+            sale_record: "[]".to_string(),
             offer_id: 0,
             discount: 0,
             stock_count: 0,
