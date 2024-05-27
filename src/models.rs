@@ -273,13 +273,7 @@ impl Product {
             id: None,
             uv30: 0,
             sales30: 0,
-            sale_record: json!([
-                {
-                    "date": OffsetDateTime::now_local().unwrap().date().to_string(),
-                    "sale": 0,
-                    "uv": 0
-                }
-            ])
+            sale_record: json!([])
             .to_string(),
             offer_id: 0,
             discount: 0,
