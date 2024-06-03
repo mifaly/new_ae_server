@@ -138,6 +138,7 @@ pub async fn products_from_ids(
         model_id: String,
         supplier: String,
         del: &'static str,
+        sale30: i64,
         sku_props_colors: String,
     }
     let mut ofs: HashMap<i64, Vec<Of>> = HashMap::new();
@@ -165,6 +166,7 @@ pub async fn products_from_ids(
                     } else {
                         ""
                     },
+                    sale30: offer.sale30,
                     sku_props_colors: (serde_json::from_str::<Value>(&offer.sku_info_use).unwrap())
                         ["skuProps"][0]["value"]
                         .to_string(),
