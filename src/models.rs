@@ -149,11 +149,11 @@ impl Offer {
         self.sale30 = if records.len() < 2 {
             0
         } else if records.len() < 31 {
-            records[records.len() - 1]["count"].as_i64().unwrap()
-                - records[0]["count"].as_i64().unwrap()
+            records[0]["count"].as_i64().unwrap()
+                - records[records.len() - 1]["count"].as_i64().unwrap()
         } else {
-            records[records.len() - 1]["count"].as_i64().unwrap()
-                - records[records.len() - 31]["count"].as_i64().unwrap()
+            records[records.len() - 31]["count"].as_i64().unwrap()
+                - records[records.len() - 1]["count"].as_i64().unwrap()
         };
         self.sale_info = no.sale_info.clone();
         self.detail_url = no.detail_url.clone();
@@ -162,11 +162,11 @@ impl Offer {
         let sale60 = if records.len() < 2 {
             0
         } else if records.len() < 61 {
-            records[records.len() - 1]["count"].as_i64().unwrap()
-                - records[0]["count"].as_i64().unwrap()
+            records[0]["count"].as_i64().unwrap()
+                - records[records.len() - 1]["count"].as_i64().unwrap()
         } else {
-            records[records.len() - 1]["count"].as_i64().unwrap()
-                - records[records.len() - 61]["count"].as_i64().unwrap()
+            records[records.len() - 61]["count"].as_i64().unwrap()
+                - records[records.len() - 1]["count"].as_i64().unwrap()
         };
         if self.updated_at - self.created_at
             > Duration::days(cfg["CHECK_OFFER_SALES_AFTER_DAYS"].as_i64().unwrap_or(90))
