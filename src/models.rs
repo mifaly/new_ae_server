@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json, Value};
 use sqlx::FromRow;
+use std::cmp::{max, min};
 use time::{
     serde::rfc3339::{self as show_time, option as show_option_time},
     Duration, OffsetDateTime,
@@ -68,16 +69,42 @@ pub struct Offer {
 }
 impl Offer {
     pub fn new(no: &NewOffer) -> Self {
+        let can_booked_amount: Value = from_str(&no.sale_info).unwrap();
+        let mut sale_record: Vec<Value> = vec![
+            json!({
+                "date": OffsetDateTime::now_local().unwrap().date().to_string(),
+                "count": 0}),
+            can_booked_amount.clone(),
+        ];
+
+        let mut sale_info = can_booked_amount.clone();
+        //新增的offer销量刚开始统计为0
+        sale_info["color"]
+            .as_object_mut()
+            .unwrap()
+            .values_mut()
+            .for_each(|mut v| {
+                *v = json!(0);
+            });
+        sale_info["size"]
+            .as_object_mut()
+            .unwrap()
+            .values_mut()
+            .for_each(|mut v| {
+                *v = json!(0);
+            });
+        sale_info["detail"]
+            .as_object_mut()
+            .unwrap()
+            .values_mut()
+            .for_each(|mut v| {
+                *v = json!(0);
+            });
+
         Self {
             id: None,
             product_id: 0,
-            sale_record: json!([
-                {
-                    "date": OffsetDateTime::now_local().unwrap().date().to_string(),
-                    "count": no.sale30
-                }
-            ])
-            .to_string(),
+            sale_record: json!(sale_record).to_string(),
             discount: (no.price - no.better_price) * 100 / no.price,
             sku_info_use: no.sku_info.clone(),
             detail_url_use: no.detail_url.clone(),
@@ -95,7 +122,7 @@ impl Offer {
             detail_video_id: no.detail_video_id,
             model_id: no.model_id.clone(),
             sale30: 0, //新增的offer销量刚开始统计为0
-            sale_info: no.sale_info.clone(),
+            sale_info: sale_info.to_string(),
             price: no.price,
             better_price: no.better_price,
             sku_info: no.sku_info.clone(),
@@ -129,52 +156,136 @@ impl Offer {
             }
         }
         //self.model_id = no.model_id.clone();
-        let sale_record_today = json!({
-            "date": &today,
-            "count": no.sale30
-        });
+
+        let mut sale_info: Value = from_str(&self.sale_info).unwrap();
         let mut records = from_str::<Value>(&self.sale_record)
             .unwrap()
             .as_array()
             .unwrap()
             .to_owned();
-        if records.len() == 0 || records[records.len() - 1]["date"].as_str().unwrap() != &today {
-            records.push(sale_record_today);
+        let can_book_amount: Value = from_str(&no.sale_info).unwrap();
+        let prev_can_book_amount = records.pop().unwrap_or(can_book_amount.clone());
+        if records.len() == 0 || records[0]["date"].as_str().unwrap() != &today {
+            can_book_amount["color"]
+                .as_object()
+                .unwrap()
+                .iter()
+                .for_each(|(k, v)| {
+                    let v = v.as_i64().unwrap();
+                    let sale_count = match prev_can_book_amount["color"][k].as_i64() {
+                        Some(p) => {
+                            //之前有这个颜色，现在也还有这个颜色
+                            min(max(p - v, 0), 500) //销量在0-500之间才可信
+                        }
+                        None => {
+                            //之前没有这个颜色
+                            0
+                        }
+                    };
+                    match sale_info["color"][k].as_i64() {
+                        Some(p) => {
+                            //销量记录里有这个颜色
+                            sale_info["color"][k] = json!(p + sale_count);
+                        }
+                        None => {
+                            //销量记录里没有这个颜色
+                            sale_info["color"][k] = json!(sale_count);
+                        }
+                    }
+                });
+            can_book_amount["size"]
+                .as_object()
+                .unwrap()
+                .iter()
+                .for_each(|(k, v)| {
+                    let v = v.as_i64().unwrap();
+                    let sale_count = match prev_can_book_amount["size"][k].as_i64() {
+                        Some(p) => {
+                            //之前有这个尺码，现在也还有这个尺码
+                            min(max(p - v, 0), 500) //销量在0-500之间才可信
+                        }
+                        None => {
+                            //之前没有这个尺码
+                            0
+                        }
+                    };
+                    match sale_info["size"][k].as_i64() {
+                        Some(p) => {
+                            //销量记录里有这个尺码
+                            sale_info["size"][k] = json!(p + sale_count);
+                        }
+                        None => {
+                            //销量记录里没有这个尺码
+                            sale_info["size"][k] = json!(sale_count);
+                        }
+                    }
+                });
+            let mut sale_today = 0;
+            can_book_amount["detail"]
+                .as_object()
+                .unwrap()
+                .iter()
+                .for_each(|(k, v)| {
+                    let v = v.as_i64().unwrap();
+                    let sale_count = match prev_can_book_amount["detail"][k].as_i64() {
+                        Some(p) => {
+                            //之前有这个sku，现在也还有这个sku
+                            min(max(p - v, 0), 200) //销量在0-200之间才可信
+                        }
+                        None => {
+                            //之前没有这个sku
+                            0
+                        }
+                    };
+                    sale_today += sale_count;
+                    match sale_info["detail"][k].as_i64() {
+                        Some(p) => {
+                            //销量记录里有这个sku
+                            sale_info["detail"][k] = json!(p + sale_count);
+                        }
+                        None => {
+                            //销量记录里没有这个sku
+                            sale_info["detail"][k] = json!(sale_count);
+                        }
+                    }
+                });
+            let sale_record_today = json!({
+                "date": &today,
+                "count": sale_today
+            });
+
+            records.insert(0, sale_record_today);
 
             while records.len() > 400 {
-                records.remove(0);
+                records.pop().unwrap();
             }
         }
-        self.sale_record = json!(records).to_string();
-        self.sale30 = if records.len() < 2 {
-            0
-        } else if records.len() < 31 {
-            records[0]["count"].as_i64().unwrap()
-                - records[records.len() - 1]["count"].as_i64().unwrap()
-        } else {
-            records[records.len() - 31]["count"].as_i64().unwrap()
-                - records[records.len() - 1]["count"].as_i64().unwrap()
+        self.sale30 = match records.chunks(30).next() {
+            Some(recent30) => {
+                let mut sale30 = 0;
+                recent30.iter().for_each(|v| {
+                    sale30 += v["count"].as_i64().unwrap();
+                });
+                sale30
+            }
+            None => 0,
         };
-        self.sale_info = no.sale_info.clone();
-        self.detail_url = no.detail_url.clone();
 
         //月销量低的下架？
-        let sale60 = if records.len() < 2 {
-            0
-        } else if records.len() < 61 {
-            records[0]["count"].as_i64().unwrap()
-                - records[records.len() - 1]["count"].as_i64().unwrap()
-        } else {
-            records[records.len() - 61]["count"].as_i64().unwrap()
-                - records[records.len() - 1]["count"].as_i64().unwrap()
+        let sale60 = match records.chunks(60).next() {
+            Some(recent60) => {
+                let mut sale60 = 0;
+                recent60.iter().for_each(|v| {
+                    sale60 += v["count"].as_i64().unwrap();
+                });
+                sale60
+            }
+            None => 0,
         };
         if self.updated_at - self.created_at
             > Duration::days(cfg["CHECK_OFFER_SALES_AFTER_DAYS"].as_i64().unwrap_or(90))
         {
-            let sale_info: Value = from_str(&self.sale_info).unwrap();
-            let skus = sale_info["color"].as_array().unwrap().len()
-                * sale_info["size"].as_array().unwrap().len();
-            if sale60 < (skus as i64) {
+            if sale60 < (sale_info["detail"].as_object().unwrap().len() as i64) {
                 //销量小于sku数
                 self.tips += "销量低下架否?;";
                 if self.pending == 0 {
@@ -182,6 +293,13 @@ impl Offer {
                 }
             }
         }
+
+        records.push(can_book_amount);
+        self.sale_record = json!(records).to_string();
+
+        self.sale_info = sale_info.to_string();
+
+        self.detail_url = no.detail_url.clone();
 
         //price不更新
         if self.better_price != no.better_price {

@@ -91,10 +91,7 @@ pub fn router<S>(state: AEState) -> Router<S> {
                             "/dl_discount_xslx/:default_discount",
                             get(products::admin_product_dl_discount_xslx),
                         )
-                        .route(
-                            "/upload_xlsx",
-                            post(products::admin_product_upload_xlsx),
-                        )
+                        .route("/upload_xlsx", post(products::admin_product_upload_xlsx))
                         .route("/available", get(products::admin_product_available)),
                 )
                 .nest(

@@ -761,16 +761,14 @@ pub async fn admin_product_upload_xlsx(
                         .as_array()
                         .unwrap()
                         .to_owned();
-                    if sale_record.len() == 0
-                        || sale_record[sale_record.len() - 1]["date"].as_str().unwrap() != date
-                    {
-                        sale_record.push(sale_record_this_day);
+                    if sale_record.len() == 0 || sale_record[0]["date"].as_str().unwrap() != date {
+                        sale_record.insert(0, sale_record_this_day);
                         while sale_record.len() > 400 {
-                            sale_record.remove(0);
+                            sale_record.pop();
                         }
                     }
                     sale_record_str = json!(sale_record).to_string();
-                    let (uv30, sales30) = match sale_record.rchunks(30).next() {
+                    let (uv30, sales30) = match sale_record.chunks(30).next() {
                         Some(recent30) => {
                             let mut u = 0;
                             let mut s = 0;
